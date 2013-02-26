@@ -25,6 +25,8 @@
 
 module.exports = UdpHeader;
 
+var ip = require('ip');
+
 var LENGTH = 8;
 
 function UdpHeader(opts, offset) {
@@ -36,7 +38,19 @@ function UdpHeader(opts, offset) {
            ? this
            : Object.create(UdpHeader.prototype);
 
+  opts = opts || {};
+
+  self.srcPort = ~~opts.srcPort;
+  self.dstPort = ~~opts.dstPort;
   self.length = LENGTH;
+  if (typeof opts.dataLength === 'number') {
+    self.dataLength = ~~opts.dataLength;
+    self.totalLength = self.dataLength + self.length;
+  } else if (typeof opts.totalLength === 'number') {
+    self.totalLength = ~~opts.totalLength;
+    self.dataLength = self.totalLength - self.length;
+  }
+
 
   return self;
 }
@@ -44,16 +58,82 @@ function UdpHeader(opts, offset) {
 UdpHeader.fromBuffer = function(buf, offset) {
   offset = ~~offset;
 
-  // TODO: implement fromBuffer
+  var srcPort = buf.readUInt16BE(offset);
+  offset += 2;
 
-  return new UdpHeader();
+  var dstPort = buf.readUInt16BE(offset);
+  offset += 2;
+
+  // length in bytes of header + data
+  var totalLength = buf.readUInt16BE(offset);
+  offset += 2;
+
+  var checksum = buf.readUInt16BE(offset);
+  offset += 2;
+
+  // TODO: validate checksum?
+
+  return new UdpHeader({srcPort: srcPort, dstPort: dstPort,
+                        totalLength: totalLength});
 }
 
-UdpHeader.prototype.toBuffer = function(buf, offset) {
+UdpHeader.prototype.toBuffer = function(msg, buf, offset) {
   offset = ~~offset;
   buf = (buf instanceof Buffer) ? buf : new Buffer(offset + LENGTH);
 
-  // TODO: implement toBuffer
+  buf.writeUInt16BE(this.srcPort, offset);
+  offset += 2;
+
+  buf.writeUInt16BE(this.dstPort, offset);
+  offset += 2;
+
+  buf.writeUInt16BE(this.totalLength, offset);
+  offset += 2;
+
+  buf.writeUInt16BE(this._checksum(msg), offset);
+  offset += 2;
 
   return buf;
 }
+
+UdpHeader.prototype._checksum = function(msg) {
+  if (!msg || !msg.ip || !msg.data) {
+    return 0;
+  }
+  var offset = ~~msg.offset;
+
+  var sum = 0;
+
+  var ipBuf = new Buffer(8);
+  ip.toBuffer(msg.ip.src, ipBuf, 0, 4);
+  ip.toBuffer(msg.ip.dst, ipBuf, 4, 4);
+  sum += ipBuf.readUInt16BE(0);
+  sum += ipBuf.readUInt16BE(2);
+  sum += ipBuf.readUInt16BE(4);
+  sum += ipBuf.readUInt16BE(6);
+
+  sum += 17;
+  sum += this.totalLength;
+
+  sum += this.srcPort;
+  sum += this.dstPort;
+  sum += this.totalLength;
+
+  var i, n;
+  for (i = offset, n = msg.data.length; i < n; i += 2) {
+    sum += msg.data.readUInt16BE(i);
+  }
+
+  if (i > n) {
+    sum += msg.data.readUInt8BE(n - 1) << 8;
+  }
+
+  var carry = (sum & 0x0f0000) >> 16;
+  var checksum = (~(sum + carry)) & 0xffff;
+
+  if (!checksum) {
+    checksum = 0xffff;
+  }
+
+  return checksum;
+};

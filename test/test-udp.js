@@ -25,9 +25,46 @@
 
 var UdpHeader = require('../udp');
 
-module.exports.nop = function(test) {
-  test.expect(1);
-  var udph = new UdpHeader();
-  test.ok(udph instanceof UdpHeader);
-  test.done();
+var IpHeader = require('ip-header');
+var path = require('path');
+var pcap = require('pcap-parser');
+
+var FILE = path.join(__dirname, 'data', 'netbios-ns-b-query-winxp.pcap');
+
+module.exports.fromBuffer = function(test) {
+  test.expect(5);
+  var parser = pcap.parse(FILE);
+  parser.on('packetData', function(buf) {
+    var offset = 14;
+    var iph = new IpHeader(buf, offset);
+    var udp = new UdpHeader(buf, offset + iph.length);
+
+    test.equal(137, udp.srcPort);
+    test.equal(137, udp.dstPort);
+    test.equal(50, udp.dataLength);
+    test.equal(58, udp.totalLength);
+    test.equal(8, udp.length);
+    test.done();
+  });
+};
+
+module.exports.toBuffer = function(test) {
+  test.expect(8);
+
+  var parser = pcap.parse(FILE);
+  parser.on('packetData', function(buf) {
+    var offset = 14;
+    var iph = new IpHeader(buf, offset);
+    offset += iph.length;
+
+    var udp = new UdpHeader(buf, offset);
+
+    var out = udp.toBuffer({ip: iph, data: buf, offset: offset + udp.length});
+
+    for (var i = 0, n = udp.length; i < n; ++i) {
+      test.equal(buf.readUInt8(offset + i), out.readUInt8(i));
+    }
+
+    test.done();
+  });
 };

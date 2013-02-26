@@ -12,9 +12,12 @@
   "author": "Ben Kelly <ben@wanderview.com>",
   "license": "BSD",
   "dependencies": {
+    "ip": "~0.0.5"
   },
   "devDependencies": {
-    "nodeunit": "~0.7.4"
+    "ip-header": "~0.1.2",
+    "nodeunit": "~0.7.4",
+    "pcap-parser": "~0.2.1"
   },
   "repository": {
     "type": "git",
