@@ -1,0 +1,27 @@
+{
+  "name": "udp-header",
+  "description": "UDP header serialization",
+  "keywords": [
+    "udp",
+    "datagram",
+    "header",
+    "parser",
+    "binary"
+  ],
+  "version": "0.0.0",
+  "author": "Ben Kelly <ben@wanderview.com>",
+  "license": "BSD",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "nodeunit": "~0.7.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:wanderview/node-udp-header.git"
+  },
+  "scripts": {
+    "test": "nodeunit test"
+  },
+  "main": "udp.js"
+}
