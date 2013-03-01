@@ -118,7 +118,7 @@ UdpHeader.prototype.setChecksum = function(iph, data, offset) {
   sum += this.totalLength;
 
   var i, n;
-  for (i = offset, n = data.length; i < n; i += 2) {
+  for (i = offset, n = offset + this.dataLength; i < n; i += 2) {
     sum += data.readUInt16BE(i);
   }
 
