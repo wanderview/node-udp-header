@@ -20,24 +20,17 @@ udph.length === 8;
 // write UDP headers out
 var out = udph.toBuffer();
 
-// By default, the UDP checksum is set to zero.  To calculate the checksum
-// you must provide more information about the overall packet.  Specifically,
-// the src IP, dst IP, and data buffer.
-var packet = {
-  ip: {
-    src: '1.1.1.1',
-    dst: '2.2.2.2',
-  },
-  data: new Buffer(508),
-  offset: 8
-};
-var outWithChecksum = udph.toBuffer(packet);
-
-// Usually you will have an existing buffer to write to.  For example,
-// our packet object above has an adequately sized buffer already
-// containing the data.  We just need to prepend the header.
+// By default, the UDP checksum is not calculated.  It is passed through from
+// if you parse an existing buffer or set to the opts.checksum constructor
+// option.
 //
+// To calculate the checksum you must call setChecksum() with the ip header
+// object and udp payload buffer.
+// the src IP, dst IP, and data buffer.
+var iph = new IpHeader({dst:'1.1.1.1', src:'2.2.2.2'});
+udph.setChecksum(iph, buf, offset);
+
 // To write a buffer in place, provide the buffer and option offset
 // after the packet object.
-udph.toBuffer(packet, packet.data, 0);
+udph.toBuffer(buf, offset);
 ```

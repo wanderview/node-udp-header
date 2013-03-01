@@ -59,7 +59,9 @@ module.exports.toBuffer = function(test) {
 
     var udp = new UdpHeader(buf, offset);
 
-    var out = udp.toBuffer({ip: iph, data: buf, offset: offset + udp.length});
+    udp.setChecksum(iph, buf, offset + udp.length);
+
+    var out = udp.toBuffer();
 
     for (var i = 0, n = udp.length; i < n; ++i) {
       test.equal(buf.readUInt8(offset + i), out.readUInt8(i));

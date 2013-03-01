@@ -51,6 +51,7 @@ function UdpHeader(opts, offset) {
     self.dataLength = self.totalLength - self.length;
   }
 
+  self.checksum = ~~opts.checksum;
 
   return self;
 }
@@ -74,10 +75,10 @@ UdpHeader.fromBuffer = function(buf, offset) {
   // TODO: validate checksum?
 
   return new UdpHeader({srcPort: srcPort, dstPort: dstPort,
-                        totalLength: totalLength});
+                        totalLength: totalLength, checksum: checksum});
 }
 
-UdpHeader.prototype.toBuffer = function(msg, buf, offset) {
+UdpHeader.prototype.toBuffer = function(buf, offset) {
   offset = ~~offset;
   buf = (buf instanceof Buffer) ? buf : new Buffer(offset + LENGTH);
 
@@ -90,23 +91,20 @@ UdpHeader.prototype.toBuffer = function(msg, buf, offset) {
   buf.writeUInt16BE(this.totalLength, offset);
   offset += 2;
 
-  buf.writeUInt16BE(this._checksum(msg), offset);
+  buf.writeUInt16BE(this.checksum, offset);
   offset += 2;
 
   return buf;
 }
 
-UdpHeader.prototype._checksum = function(msg) {
-  if (!msg || !msg.ip || !msg.data) {
-    return 0;
-  }
-  var offset = ~~msg.offset;
+UdpHeader.prototype.setChecksum = function(iph, data, offset) {
+  offset = ~~offset;
 
   var sum = 0;
 
   var ipBuf = new Buffer(8);
-  ip.toBuffer(msg.ip.src, ipBuf, 0, 4);
-  ip.toBuffer(msg.ip.dst, ipBuf, 4, 4);
+  ip.toBuffer(iph.src, ipBuf, 0, 4);
+  ip.toBuffer(iph.dst, ipBuf, 4, 4);
   sum += ipBuf.readUInt16BE(0);
   sum += ipBuf.readUInt16BE(2);
   sum += ipBuf.readUInt16BE(4);
@@ -120,12 +118,12 @@ UdpHeader.prototype._checksum = function(msg) {
   sum += this.totalLength;
 
   var i, n;
-  for (i = offset, n = msg.data.length; i < n; i += 2) {
-    sum += msg.data.readUInt16BE(i);
+  for (i = offset, n = data.length; i < n; i += 2) {
+    sum += data.readUInt16BE(i);
   }
 
   if (i > n) {
-    sum += msg.data.readUInt8BE(n - 1) << 8;
+    sum += data.readUInt8BE(n - 1) << 8;
   }
 
   var carry = (sum & 0x0f0000) >> 16;
@@ -135,5 +133,7 @@ UdpHeader.prototype._checksum = function(msg) {
     checksum = 0xffff;
   }
 
-  return checksum;
+  this.checksum = checksum;
+
+  return this.checksum;
 };
